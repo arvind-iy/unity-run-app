@@ -9,6 +9,52 @@ class SheetsAPI {
         this.userEmail = null;
         this.tokenClient = null;
         this.accessToken = null;
+        this.tokenExpiry = null;
+        
+        // Try to restore session from localStorage
+        this.restoreSession();
+    }
+    
+    /**
+     * Restore session from localStorage
+     */
+    restoreSession() {
+        const savedToken = localStorage.getItem('gapi_token');
+        const savedExpiry = localStorage.getItem('gapi_token_expiry');
+        
+        if (savedToken && savedExpiry) {
+            const expiryTime = parseInt(savedExpiry);
+            if (Date.now() < expiryTime) {
+                this.accessToken = savedToken;
+                this.tokenExpiry = expiryTime;
+                console.log('✓ Restored valid session from localStorage');
+            } else {
+                console.log('Session expired, clearing...');
+                this.clearSession();
+            }
+        }
+    }
+    
+    /**
+     * Save session to localStorage
+     */
+    saveSession(token, expiresIn = 3600) {
+        this.accessToken = token;
+        this.tokenExpiry = Date.now() + (expiresIn * 1000);
+        localStorage.setItem('gapi_token', token);
+        localStorage.setItem('gapi_token_expiry', this.tokenExpiry.toString());
+        console.log('✓ Session saved to localStorage');
+    }
+    
+    /**
+     * Clear session from localStorage
+     */
+    clearSession() {
+        this.accessToken = null;
+        this.tokenExpiry = null;
+        localStorage.removeItem('gapi_token');
+        localStorage.removeItem('gapi_token_expiry');
+        console.log('✓ Session cleared');
     }
 
     /**
@@ -35,11 +81,26 @@ class SheetsAPI {
                     if (response.error !== undefined) {
                         throw response;
                     }
-                    this.accessToken = response.access_token;
+                    // Save token to localStorage with expiry
+                    const expiresIn = response.expires_in || 3600;
+                    this.saveSession(response.access_token, expiresIn);
+                    
+                    // Set access token for gapi
+                    gapi.client.setToken({ access_token: response.access_token });
+                    
                     this.isSignedIn = true;
                     this.onSignInChange(true);
                 },
             });
+
+            // If we restored a valid session, set it and trigger sign-in
+            if (this.accessToken) {
+                gapi.client.setToken({ access_token: this.accessToken });
+                this.isSignedIn = true;
+                setTimeout(() => {
+                    this.onSignInChange(true);
+                }, 100);
+            }
 
             console.log('✓ Sheets API initialized');
             return true;
@@ -76,8 +137,15 @@ class SheetsAPI {
     signOut() {
         if (this.accessToken) {
             google.accounts.oauth2.revoke(this.accessToken);
-            this.accessToken = null;
         }
+        // Clear session from localStorage
+        this.clearSession();
+        
+        // Clear gapi token
+        if (gapi.client) {
+            gapi.client.setToken(null);
+        }
+        
         this.isSignedIn = false;
         this.userEmail = null;
         this.onSignInChange(false);
@@ -87,8 +155,8 @@ class SheetsAPI {
      * Check if token is expired
      */
     isTokenExpired() {
-        // Implement token expiry check if needed
-        return false;
+        if (!this.tokenExpiry) return true;
+        return Date.now() >= this.tokenExpiry;
     }
 
     /**
