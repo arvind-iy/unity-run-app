@@ -4,122 +4,138 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>Bib Assignment - Unity Run & Ride</title>
+    <title>Unity Run & Ride - Bib Assignment</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <h1>🏃 Unity Run & Ride</h1>
-                <p>Bib Assignment</p>
+    <!-- Compact Header -->
+    <header class="header">
+        <div class="header-title">🏃 Unity Run & Ride</div>
+        <div class="header-actions">
+            <div id="connectionStatus" class="status-indicator">
+                <span class="status-dot"></span>
+                <span id="statusText">Offline</span>
             </div>
-            <div class="header-right">
-                <div id="connectionStatus" class="status-badge offline">
-                    <span class="status-dot"></span>
-                    <span id="statusText">Offline</span>
-                </div>
-                <button id="signOutBtn" class="btn-icon" title="Sign Out" style="display:none">
-                    🚪
-                </button>
-            </div>
-        </header>
+            <button id="dashboardBtn" class="btn-header" style="display:none">📊 Dashboard</button>
+            <button id="settingsBtn" class="btn-header" style="display:none">⚙️</button>
+            <button id="signOutBtn" class="btn-header" style="display:none">🚪</button>
+        </div>
+    </header>
 
-        <!-- Auth Section -->
-        <div id="authSection" class="auth-section">
-            <div class="auth-card">
-                <h2>🔐 Sign In Required</h2>
-                <p>Please sign in with your Google account to access the bib assignment system.</p>
-                <button id="signInBtn" class="btn btn-primary">
-                    Sign in with Google
-                </button>
+    <!-- Auth Section -->
+    <div id="authSection" class="auth-container">
+        <div class="auth-box">
+            <div class="auth-icon">🔐</div>
+            <h2>Sign In Required</h2>
+            <p>Please sign in with your Google account to access the bib assignment system.</p>
+            <button id="signInBtn" class="btn-primary">Sign in with Google</button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <main id="mainApp" class="main-container" style="display:none;">
+        <!-- Search Section -->
+        <div class="search-container">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Search by Mobile, Email, or Name..."
+                    autocomplete="off"
+                >
+                <button id="clearSearchBtn" class="btn-clear" style="display:none;">×</button>
+                <span class="search-shortcut">/</span>
             </div>
+            <div class="search-hint">💡 Try: 9014695864, email@example.com, or "Rajesh"</div>
         </div>
 
-        <!-- Main App (hidden until signed in) -->
-        <div id="mainApp" style="display:none;">
-            <!-- Setup Form -->
-            <div class="setup-section">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="venueSelect">📍 Venue</label>
-                        <select id="venueSelect" required>
-                            <option value="">Select Venue</option>
-                            <option value="Main Stadium">Main Stadium</option>
-                            <option value="Registration Tent">Registration Tent</option>
-                            <option value="Expo Hall">Expo Hall</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="deskSelect">🖥️ Desk Number</label>
-                        <select id="deskSelect" required>
-                            <option value="">Select Desk</option>
-                            <option value="1">Desk 1</option>
-                            <option value="2">Desk 2</option>
-                            <option value="3">Desk 3</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="staffName">👤 Your Name</label>
-                        <input type="text" id="staffName" placeholder="Enter your name" required>
+        <!-- Stats Bar -->
+        <div id="statsBar" class="stats-bar" style="display:none;">
+            <span>📊 Quick Stats:</span>
+            <span id="statsText">Loading...</span>
+        </div>
+
+        <!-- Results Container (Cards) -->
+        <div id="cardsContainer" class="cards-container"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>Start by searching for a participant</h3>
+            <p>Enter a mobile number, email, or name to get started</p>
+            <p class="empty-hint">Press <kbd>/</kbd> to focus search</p>
+        </div>
+
+        <!-- Offline Queue Banner -->
+        <div id="queueBanner" class="queue-banner" style="display:none;">
+            <div class="queue-info">
+                <span class="queue-icon">📦</span>
+                <span id="queueText">6 pending assignments in offline queue</span>
+            </div>
+            <div class="queue-actions">
+                <button id="syncBtn" class="btn-small">🔄 Sync</button>
+                <button id="clearQueueBtn" class="btn-small btn-danger">🗑️ Clear</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Panel (Slide-out) -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-overlay"></div>
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>⚙️ Session Settings</h2>
+                <button id="closeSettingsBtn" class="btn-close">×</button>
+            </div>
+            
+            <div class="settings-body">
+                <div class="setting-group">
+                    <label class="setting-label">📍 Venue</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="venue" value="Prabhadevi">
+                            <span>Prabhadevi</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="venue" value="Andheri">
+                            <span>Andheri</span>
+                        </label>
                     </div>
                 </div>
-            </div>
 
-            <!-- Search Section -->
-            <div class="search-section">
-                <h2>🔍 Search Participant</h2>
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search by Phone, Email, Name, or Sr. No." autocomplete="off">
-                    <button id="searchBtn" class="btn btn-primary">Search</button>
-                </div>
-                <div id="searchHint" class="hint">
-                    💡 Tip: Enter at least 3 characters to search
-                </div>
-            </div>
-
-            <!-- Results Section -->
-            <div id="resultsSection" style="display:none;">
-                <h3>Search Results</h3>
-                <div id="resultsContainer"></div>
-            </div>
-
-            <!-- Assignment Form -->
-            <div id="assignmentSection" style="display:none;">
-                <div class="assignment-card">
-                    <h3>📝 Assign Bib Number</h3>
-                    <div id="participantInfo" class="participant-info"></div>
-                    <div class="form-group">
-                        <label for="bibInput">Bib Number</label>
-                        <input type="text" id="bibInput" placeholder="Enter bib number" autocomplete="off">
-                        <div id="bibHint" class="hint"></div>
-                    </div>
-                    <div class="button-group">
-                        <button id="assignBtn" class="btn btn-primary">✓ Assign Bib</button>
-                        <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                <div class="setting-group">
+                    <label class="setting-label">🖥️ Desk Number</label>
+                    <div class="desk-group">
+                        <button class="desk-btn" data-desk="1">1</button>
+                        <button class="desk-btn" data-desk="2">2</button>
+                        <button class="desk-btn" data-desk="3">3</button>
+                        <button class="desk-btn" data-desk="4">4</button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Offline Queue -->
-            <div id="offlineQueue" style="display:none;" class="offline-queue">
-                <h4>📦 Offline Queue</h4>
-                <p id="queueCount">0 pending assignments</p>
-                <div class="button-group">
-                    <button id="syncBtn" class="btn btn-small">🔄 Sync Now</button>
-                    <button id="clearQueueBtn" class="btn btn-small" style="background: #dc2626;">🗑️ Clear Queue</button>
+                <div class="setting-group">
+                    <label class="setting-label">👤 Your Name</label>
+                    <input type="text" id="staffNameInput" class="setting-input" placeholder="Enter your name">
+                </div>
+
+                <button id="saveSettingsBtn" class="btn-primary btn-full">✓ Save Settings</button>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-actions">
+                    <button id="viewStatsBtn" class="btn-secondary btn-full">📊 View Statistics</button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Loading Overlay -->
-        <div id="loadingOverlay" class="loading-overlay" style="display:none;">
-            <div class="spinner"></div>
-            <p id="loadingText">Loading...</p>
-        </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+        <div class="spinner"></div>
+        <p id="loadingText">Loading...</p>
     </div>
 
     <!-- Scripts -->

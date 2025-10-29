@@ -1,26 +1,31 @@
 /**
- * Staff App Logic
- * Handles bib assignment interface
+ * Card-Based UI Logic - Unity Run & Ride
+ * Clean, modern, desktop-optimized bib assignment interface
  */
 
 let currentParticipant = null;
 let venue = '';
 let desk = '';
 let staffName = '';
-let isApiOnline = false; // Cache API connectivity status
+let isApiOnline = false;
+let searchDebounce = null;
+let expandedCardId = null;
 
 // ═══════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('App initializing...');
+    console.log('Card-based UI initializing...');
     
     // Load saved settings
     loadSettings();
     
     // Setup event listeners
     setupEventListeners();
+    
+    // Setup keyboard shortcuts
+    setupKeyboardShortcuts();
     
     // Initialize Sheets API
     try {
@@ -39,8 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
         
         hideLoading();
-        
-        // Don't assume online - will be checked after sign in
         updateConnectionStatus(false);
     } catch (error) {
         hideLoading();
@@ -49,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// SETTINGS
+// SETTINGS MANAGEMENT
 // ═══════════════════════════════════════════════════════════
 
 function loadSettings() {
@@ -57,19 +60,39 @@ function loadSettings() {
     desk = localStorage.getItem('desk') || '';
     staffName = localStorage.getItem('staffName') || '';
     
-    if (venue) document.getElementById('venueSelect').value = venue;
-    if (desk) document.getElementById('deskSelect').value = desk;
-    if (staffName) document.getElementById('staffName').value = staffName;
+    // Pre-fill settings panel if values exist
+    if (venue) {
+        const venueRadio = document.querySelector(`input[name="venue"][value="${venue}"]`);
+        if (venueRadio) venueRadio.checked = true;
+    }
+    if (desk) {
+        const deskBtn = document.querySelector(`.desk-btn[data-desk="${desk}"]`);
+        if (deskBtn) deskBtn.classList.add('active');
+    }
+    if (staffName) {
+        document.getElementById('staffNameInput').value = staffName;
+    }
 }
 
 function saveSettings() {
-    venue = document.getElementById('venueSelect').value;
-    desk = document.getElementById('deskSelect').value;
-    staffName = document.getElementById('staffName').value;
+    // Get selected venue
+    const venueRadio = document.querySelector('input[name="venue"]:checked');
+    venue = venueRadio ? venueRadio.value : '';
     
+    // Get selected desk
+    const activeDeskBtn = document.querySelector('.desk-btn.active');
+    desk = activeDeskBtn ? activeDeskBtn.dataset.desk : '';
+    
+    // Get staff name
+    staffName = document.getElementById('staffNameInput').value.trim();
+    
+    // Save to localStorage
     localStorage.setItem('venue', venue);
     localStorage.setItem('desk', desk);
     localStorage.setItem('staffName', staffName);
+    
+    console.log('Settings saved:', { venue, desk, staffName });
+    return { venue, desk, staffName };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -81,29 +104,76 @@ function setupEventListeners() {
     document.getElementById('signInBtn').addEventListener('click', signIn);
     document.getElementById('signOutBtn').addEventListener('click', signOut);
     
-    // Settings
-    document.getElementById('venueSelect').addEventListener('change', saveSettings);
-    document.getElementById('deskSelect').addEventListener('change', saveSettings);
-    document.getElementById('staffName').addEventListener('input', saveSettings);
+    // Search with auto-search (debounced)
+    document.getElementById('searchInput').addEventListener('input', handleSearchInput);
+    document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
     
-    // Search
-    document.getElementById('searchBtn').addEventListener('click', search);
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') search();
+    // Settings panel
+    document.getElementById('settingsBtn').addEventListener('click', openSettings);
+    document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
+    document.querySelector('.settings-overlay').addEventListener('click', closeSettings);
+    
+    // Settings - Desk buttons
+    document.querySelectorAll('.desk-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.desk-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
     });
     
-    // Assignment
-    document.getElementById('assignBtn').addEventListener('click', assignBib);
-    document.getElementById('cancelBtn').addEventListener('click', cancelAssignment);
-    document.getElementById('bibInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') assignBib();
+    // Save settings button
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+        const settings = saveSettings();
+        if (settings.venue && settings.desk && settings.staffName) {
+            showSuccess('Settings saved successfully!');
+            closeSettings();
+        } else {
+            showError('Please fill in all settings');
+        }
     });
     
-    // Sync button
+    // Dashboard button
+    document.getElementById('dashboardBtn').addEventListener('click', () => {
+        window.location.href = 'dashboard.html';
+    });
+    
+    // View stats button
+    document.getElementById('viewStatsBtn').addEventListener('click', () => {
+        closeSettings();
+        window.location.href = 'dashboard.html';
+    });
+    
+    // Offline queue
     document.getElementById('syncBtn').addEventListener('click', syncOfflineQueue);
-    
-    // Clear queue button
     document.getElementById('clearQueueBtn').addEventListener('click', clearOfflineQueue);
+}
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════
+
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // / to focus search
+        if (e.key === '/' && !isInputFocused()) {
+            e.preventDefault();
+            document.getElementById('searchInput').focus();
+        }
+        
+        // Escape to close expanded card or settings
+        if (e.key === 'Escape') {
+            if (document.getElementById('settingsPanel').classList.contains('open')) {
+                closeSettings();
+            } else if (expandedCardId) {
+                collapseCard(expandedCardId);
+            }
+        }
+    });
+}
+
+function isInputFocused() {
+    const active = document.activeElement;
+    return active.tagName === 'INPUT' || active.tagName === 'TEXTAREA';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -132,7 +202,17 @@ function handleSignInChange(isSignedIn) {
         document.getElementById('authSection').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         document.getElementById('signOutBtn').style.display = 'block';
+        document.getElementById('dashboardBtn').style.display = 'block';
+        document.getElementById('settingsBtn').style.display = 'block';
         hideLoading();
+        
+        // Check if settings are complete, if not show settings panel
+        if (!venue || !desk || !staffName) {
+            setTimeout(() => {
+                openSettings();
+                showError('Please configure your session settings first');
+            }, 500);
+        }
         
         // Check API connectivity after sign in
         setTimeout(async () => {
@@ -144,7 +224,6 @@ function handleSignInChange(isSignedIn) {
             const count = await offlineManager.getQueueCount();
             
             if (count > 0 && isOnline) {
-                // Auto-sync if there are pending items and API is reachable
                 console.log(`Found ${count} pending items, auto-syncing...`);
                 await syncOfflineQueue();
             }
@@ -153,22 +232,60 @@ function handleSignInChange(isSignedIn) {
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('mainApp').style.display = 'none';
         document.getElementById('signOutBtn').style.display = 'none';
+        document.getElementById('dashboardBtn').style.display = 'none';
+        document.getElementById('settingsBtn').style.display = 'none';
         updateConnectionStatus(false);
     }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SEARCH
+// SETTINGS PANEL
 // ═══════════════════════════════════════════════════════════
 
-async function search() {
-    const searchTerm = document.getElementById('searchInput').value.trim();
+function openSettings() {
+    document.getElementById('settingsPanel').classList.add('open');
+}
+
+function closeSettings() {
+    document.getElementById('settingsPanel').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEARCH FUNCTIONALITY
+// ═══════════════════════════════════════════════════════════
+
+function handleSearchInput(e) {
+    const searchTerm = e.target.value.trim();
     
-    if (searchTerm.length < 3) {
-        showError('Please enter at least 3 characters');
+    // Show/hide clear button
+    document.getElementById('clearSearchBtn').style.display = searchTerm ? 'block' : 'none';
+    
+    // Clear previous debounce
+    if (searchDebounce) {
+        clearTimeout(searchDebounce);
+    }
+    
+    // If empty, show empty state
+    if (!searchTerm) {
+        showEmptyState();
         return;
     }
     
+    // Debounce search (300ms)
+    if (searchTerm.length >= 3) {
+        searchDebounce = setTimeout(() => {
+            performSearch(searchTerm);
+        }, 300);
+    }
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('clearSearchBtn').style.display = 'none';
+    showEmptyState();
+}
+
+async function performSearch(searchTerm) {
     try {
         showLoading('Searching...');
         const result = await sheetsAPI.searchParticipant(searchTerm);
@@ -179,148 +296,289 @@ async function search() {
             return;
         }
         
-        displayResults(result.results);
+        displayResultsAsCards(result.results);
     } catch (error) {
         hideLoading();
         showError('Search failed: ' + error.message);
     }
 }
 
-function displayResults(results) {
-    const container = document.getElementById('resultsContainer');
-    const section = document.getElementById('resultsSection');
+function showEmptyState() {
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('cardsContainer').innerHTML = '';
+    document.getElementById('statsBar').style.display = 'none';
+}
+
+function hideEmptyState() {
+    document.getElementById('emptyState').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD RENDERING
+// ═══════════════════════════════════════════════════════════
+
+function displayResultsAsCards(results) {
+    const container = document.getElementById('cardsContainer');
+    hideEmptyState();
     
     if (results.length === 0) {
-        container.innerHTML = '<div class="no-results">No participants found</div>';
-        section.style.display = 'block';
+        container.innerHTML = `
+            <div class="empty-state" style="display: block;">
+                <div class="empty-icon">🤷</div>
+                <h3>No participants found</h3>
+                <p>Try a different search term</p>
+            </div>
+        `;
         return;
     }
     
-    container.innerHTML = results.map(p => `
-        <div class="result-card" onclick="selectParticipant(${p.rowIndex})">
-            <div class="result-header">
-                <h4>${p.name}</h4>
-                <span class="badge ${p.bibNumber ? 'badge-success' : 'badge-warning'}">
-                    ${p.bibNumber || 'No Bib'}
-                </span>
-            </div>
-            <div class="result-details">
-                <div><strong>Sr. No:</strong> ${p.srNo}</div>
-                <div><strong>Category:</strong> ${p.category}</div>
-                <div><strong>Phone:</strong> ${p.phone}</div>
-                <div><strong>Email:</strong> ${p.email}</div>
-                ${p.bibNumber ? `<div><strong>Bib:</strong> ${p.bibNumber}</div>` : ''}
-            </div>
-            ${!p.bibNumber ? '<button class="btn btn-small">Assign Bib →</button>' : ''}
-        </div>
-    `).join('');
-    
-    section.style.display = 'block';
-    
-    // Store results for selection
+    // Store results globally for reference
     window.searchResults = results;
+    
+    // Render cards
+    container.innerHTML = results.map(participant => createParticipantCard(participant)).join('');
+    
+    // Show quick stats
+    showQuickStats(results);
+}
+
+function createParticipantCard(p) {
+    const hasBib = !!p.bibNumber;
+    const cardState = hasBib ? 'has-bib' : 'no-bib';
+    const cardId = `card-${p.rowIndex}`;
+    
+    // T-Shirt icon (colored box)
+    const tshirtIcon = `<div class="tshirt-icon">${p.tshirtSize || 'N/A'}</div>`;
+    
+    // Status info
+    const bibStatus = hasBib 
+        ? `<span class="bib-info assigned">✅ Bib: ${p.bibNumber}</span>`
+        : `<span class="bib-info pending">⚠️ NO BIB ASSIGNED</span>`;
+    
+    // Action button
+    const actionBtn = hasBib
+        ? `<button class="btn-action btn-edit" onclick="expandCardForEdit('${cardId}', ${p.rowIndex})">✏️ Edit Bib</button>`
+        : `<button class="btn-action btn-assign" onclick="expandCardForAssign('${cardId}', ${p.rowIndex})">+ Assign Bib</button>`;
+    
+    return `
+        <div id="${cardId}" class="participant-card ${cardState}" data-row="${p.rowIndex}">
+            <div class="card-header">
+                <div class="card-identity">
+                    <div class="card-name">${p.name}</div>
+                    <div class="card-demographics">
+                        <span>${p.gender}</span>
+                        <span>${p.age}</span>
+                        <span>${p.activityType} ${p.distance}</span>
+                    </div>
+                    <div class="card-contact">
+                        ${p.phone ? `📱 ${p.phone}` : `📧 ${p.email}`}
+                    </div>
+                </div>
+            </div>
+            <div class="card-status">
+                <div class="card-tshirt">
+                    ${tshirtIcon}
+                    <span>T-Shirt: ${p.tshirtSize || 'N/A'}</span>
+                </div>
+                <div class="card-bib-status">
+                    ${bibStatus}
+                    ${actionBtn}
+                </div>
+            </div>
+            <div class="card-expansion" id="${cardId}-expansion">
+                <div class="expansion-content">
+                    ${createExpansionForm(p, hasBib)}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function createExpansionForm(p, isEditing) {
+    return `
+        <div class="expansion-context">
+            ${isEditing ? `✏️ Editing bib assignment for <strong>${p.name}</strong>` : `➕ Assigning new bib to <strong>${p.name}</strong>`}
+            <br>
+            ${isEditing ? `Current Bib: <strong>${p.bibNumber}</strong>` : ''}
+            <br>
+            Activity: <strong>${p.activityType}</strong> • Distance: <strong>${p.distance}</strong>
+            <br>
+            Expected Bib Range: <strong>${p.expectedBibFormat}</strong>
+        </div>
+        
+        <div class="expansion-form">
+            <label class="form-label">Bib Number</label>
+            <div class="form-input-wrapper">
+                <input 
+                    type="text" 
+                    id="bibInput-${p.rowIndex}" 
+                    class="form-input" 
+                    placeholder="Enter bib number"
+                    value="${isEditing ? p.bibNumber : ''}"
+                    oninput="validateBibInput(${p.rowIndex}, '${p.expectedBibFormat}')"
+                    autocomplete="off"
+                >
+                <span id="bibValidation-${p.rowIndex}" class="input-validation"></span>
+            </div>
+            <div class="form-hint">Expected format: ${p.expectedBibFormat}</div>
+            
+            <div class="form-actions">
+                <button class="btn-primary" onclick="submitBibAssignment(${p.rowIndex}, ${isEditing})">
+                    ✓ ${isEditing ? 'Update' : 'Assign'} Bib
+                </button>
+                <button class="btn-secondary" onclick="collapseCard('card-${p.rowIndex}')">
+                    ✗ Cancel
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD EXPANSION / COLLAPSE
+// ═══════════════════════════════════════════════════════════
+
+function expandCardForEdit(cardId, rowIndex) {
+    expandCard(cardId, rowIndex, true);
+}
+
+function expandCardForAssign(cardId, rowIndex) {
+    expandCard(cardId, rowIndex, false);
+}
+
+function expandCard(cardId, rowIndex, isEditing) {
+    // Collapse any other expanded card first
+    if (expandedCardId && expandedCardId !== cardId) {
+        collapseCard(expandedCardId);
+    }
+    
+    // Check settings
+    if (!venue || !desk || !staffName) {
+        showError('Please configure your session settings first');
+        openSettings();
+        return;
+    }
+    
+    const card = document.getElementById(cardId);
+    const expansion = document.getElementById(`${cardId}-expansion`);
+    
+    if (!card || !expansion) return;
+    
+    // Add editing state
+    card.classList.add('editing');
+    expansion.classList.add('expanded');
+    expandedCardId = cardId;
+    
+    // Focus on input
+    setTimeout(() => {
+        const input = document.getElementById(`bibInput-${rowIndex}`);
+        if (input) {
+            input.focus();
+            if (isEditing) {
+                input.select(); // Select existing text for easy editing
+            }
+        }
+    }, 100);
+}
+
+function collapseCard(cardId) {
+    const card = document.getElementById(cardId);
+    const expansion = document.getElementById(`${cardId}-expansion`);
+    
+    if (!card || !expansion) return;
+    
+    card.classList.remove('editing');
+    expansion.classList.remove('expanded');
+    expandedCardId = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BIB INPUT VALIDATION
+// ═══════════════════════════════════════════════════════════
+
+function validateBibInput(rowIndex, expectedFormat) {
+    const input = document.getElementById(`bibInput-${rowIndex}`);
+    const validation = document.getElementById(`bibValidation-${rowIndex}`);
+    const value = input.value.trim();
+    
+    if (!value) {
+        input.classList.remove('valid', 'invalid');
+        validation.textContent = '';
+        return;
+    }
+    
+    // Simple validation based on expected format
+    // Format like "50001-59999" means 5K bib range
+    const isValid = value.length >= 5 && /^\d+$/.test(value);
+    
+    if (isValid) {
+        input.classList.add('valid');
+        input.classList.remove('invalid');
+        validation.textContent = '✓ Valid';
+        validation.className = 'input-validation valid';
+    } else {
+        input.classList.add('invalid');
+        input.classList.remove('valid');
+        validation.textContent = '✗ Invalid';
+        validation.className = 'input-validation invalid';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
 // BIB ASSIGNMENT
 // ═══════════════════════════════════════════════════════════
 
-function selectParticipant(rowIndex) {
-    currentParticipant = window.searchResults.find(p => p.rowIndex === rowIndex);
-    
-    if (!currentParticipant) {
-        showError('Participant not found');
-        return;
-    }
-    
-    // Allow editing if bib is already assigned
-    const isEditing = currentParticipant.bibNumber ? true : false;
-    
-    // Check if settings are complete
-    if (!venue || !desk || !staffName) {
-        showError('Please fill in Venue, Desk, and Your Name first');
-        return;
-    }
-    
-    // Display assignment form
-    document.getElementById('participantInfo').innerHTML = `
-        <div class="info-grid">
-            <div><strong>Name:</strong> ${currentParticipant.name}</div>
-            <div><strong>Sr. No:</strong> ${currentParticipant.srNo}</div>
-            <div><strong>Category:</strong> ${currentParticipant.category}</div>
-            <div><strong>Gender:</strong> ${currentParticipant.gender}</div>
-            <div><strong>Age:</strong> ${currentParticipant.age}</div>
-            <div><strong>T-Shirt:</strong> ${currentParticipant.tshirtSize}</div>
-            ${isEditing ? `<div style="color: #f59e0b;"><strong>Current Bib:</strong> ${currentParticipant.bibNumber} (editing)</div>` : ''}
-        </div>
-    `;
-    
-    document.getElementById('bibHint').innerHTML = `
-        Expected format: <strong>${currentParticipant.expectedBibFormat}</strong>
-        ${isEditing ? '<br><span style="color: #f59e0b;">⚠️ Editing existing bib assignment</span>' : ''}
-    `;
-    
-    document.getElementById('resultsSection').style.display = 'none';
-    document.getElementById('assignmentSection').style.display = 'block';
-    
-    // Pre-fill with existing bib if editing
-    document.getElementById('bibInput').value = isEditing ? currentParticipant.bibNumber : '';
-    document.getElementById('bibInput').focus();
-    document.getElementById('bibInput').select(); // Select text for easy replacement
-}
-
-function cancelAssignment() {
-    currentParticipant = null;
-    document.getElementById('assignmentSection').style.display = 'none';
-    document.getElementById('resultsSection').style.display = 'block';
-}
-
-async function assignBib() {
-    const bibNumber = document.getElementById('bibInput').value.trim();
+async function submitBibAssignment(rowIndex, isEditing) {
+    const bibInput = document.getElementById(`bibInput-${rowIndex}`);
+    const bibNumber = bibInput.value.trim();
     
     if (!bibNumber) {
         showError('Please enter a bib number');
         return;
     }
     
-    if (!currentParticipant) {
-        showError('No participant selected');
+    // Find participant from search results
+    const participant = window.searchResults.find(p => p.rowIndex === rowIndex);
+    if (!participant) {
+        showError('Participant not found');
         return;
     }
     
     // Validate settings
-    saveSettings();
     if (!venue || !desk || !staffName) {
-        showError('Please fill in Venue, Desk, and Your Name');
+        showError('Please fill in Venue, Desk, and Your Name first');
+        openSettings();
         return;
     }
     
     try {
-        showLoading('Assigning bib...');
+        showLoading(isEditing ? 'Updating bib...' : 'Assigning bib...');
         
-        // Use cached connectivity status (checked every 30s in background)
-        // Don't make an extra API call here - it's slow!
+        // Use cached connectivity status
         if (!isApiOnline || !sheetsAPI.isSignedIn) {
             // Add to offline queue
             await addToOfflineQueue({
-                srNo: currentParticipant.srNo,
+                srNo: participant.srNo,
                 bibNumber: bibNumber,
                 venue: venue,
                 desk: desk,
                 staffName: staffName,
-                participant: currentParticipant
+                participant: participant
             });
             
             hideLoading();
-            showSuccess('API currently unavailable. Added to offline queue. Will sync when connection restored.');
-            clearAssignment();
+            showSuccess('API currently unavailable. Added to offline queue.');
+            collapseCard(`card-${rowIndex}`);
+            
+            // Update card to show pending state
+            await performSearch(document.getElementById('searchInput').value.trim());
             return;
         }
         
         // Try to assign directly to API
         console.log('Attempting direct API assignment...');
         const result = await sheetsAPI.assignBibNumber(
-            currentParticipant.srNo,
+            participant.srNo,
             bibNumber,
             venue,
             desk,
@@ -329,17 +587,16 @@ async function assignBib() {
         
         hideLoading();
         
-        console.log('Assignment result:', result);
-        
         if (!result.success) {
-            // Show the actual error to user
-            const errorMsg = result.error || 'Unknown error - check console for details';
-            showError(`Assignment failed: ${errorMsg}\n\nTroubleshooting:\n1. Check browser console (F12) for details\n2. Verify you're signed in\n3. Verify SHEET_ID in config.js is correct\n4. Check sheet exists and you have access`);
+            showError(`Assignment failed: ${result.error}`);
             return;
         }
         
-        showSuccess(`Bib ${bibNumber} assigned successfully!`);
-        clearAssignment();
+        showSuccess(`Bib ${bibNumber} ${isEditing ? 'updated' : 'assigned'} successfully!`);
+        collapseCard(`card-${rowIndex}`);
+        
+        // Refresh search results to show updated bib
+        await performSearch(document.getElementById('searchInput').value.trim());
         
     } catch (error) {
         hideLoading();
@@ -348,15 +605,24 @@ async function assignBib() {
     }
 }
 
-function clearAssignment() {
-    currentParticipant = null;
-    document.getElementById('assignmentSection').style.display = 'none';
-    document.getElementById('searchInput').value = '';
-    document.getElementById('resultsSection').style.display = 'none';
+// ═══════════════════════════════════════════════════════════
+// QUICK STATS
+// ═══════════════════════════════════════════════════════════
+
+function showQuickStats(results) {
+    const statsBar = document.getElementById('statsBar');
+    const statsText = document.getElementById('statsText');
+    
+    const total = results.length;
+    const assigned = results.filter(p => p.bibNumber).length;
+    const pending = total - assigned;
+    
+    statsText.textContent = `${total} found • ${assigned} assigned • ${pending} pending`;
+    statsBar.style.display = 'block';
 }
 
 // ═══════════════════════════════════════════════════════════
-// OFFLINE SUPPORT
+// OFFLINE QUEUE
 // ═══════════════════════════════════════════════════════════
 
 async function addToOfflineQueue(assignment) {
@@ -399,14 +665,14 @@ async function clearOfflineQueue() {
 async function updateQueueDisplay() {
     if (typeof offlineManager !== 'undefined') {
         const count = await offlineManager.getQueueCount();
-        const queueDiv = document.getElementById('offlineQueue');
-        const queueCount = document.getElementById('queueCount');
+        const queueBanner = document.getElementById('queueBanner');
+        const queueText = document.getElementById('queueText');
         
         if (count > 0) {
-            queueDiv.style.display = 'block';
-            queueCount.textContent = `${count} pending assignment${count > 1 ? 's' : ''}`;
+            queueBanner.style.display = 'flex';
+            queueText.textContent = `${count} pending assignment${count > 1 ? 's' : ''} in offline queue`;
         } else {
-            queueDiv.style.display = 'none';
+            queueBanner.style.display = 'none';
         }
     }
 }
@@ -416,9 +682,7 @@ async function updateQueueDisplay() {
 // ═══════════════════════════════════════════════════════════
 
 async function checkApiConnectivity() {
-    // Check actual API connectivity by making a lightweight API call
     try {
-        // Check if gapi is even loaded
         if (typeof gapi === 'undefined' || !gapi.client || !gapi.client.sheets) {
             console.warn('GAPI not loaded yet');
             isApiOnline = false;
@@ -427,28 +691,24 @@ async function checkApiConnectivity() {
         }
         
         if (!sheetsAPI.isSignedIn) {
-            // Not signed in, assume offline for API purposes
             console.log('Not signed in, marking offline');
             isApiOnline = false;
             updateConnectionStatus(false);
             return false;
         }
         
-        // Try to get just 1 row to test connectivity
-        console.log('Testing API connectivity with lightweight call...');
+        console.log('Testing API connectivity...');
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: CONFIG.SHEET_ID,
             range: `${CONFIG.SHEET_NAME}!A1:A1`,
         });
         
-        // If we got here, API is reachable
         console.log('✓ API is online and working');
         isApiOnline = true;
         updateConnectionStatus(true);
         return true;
     } catch (error) {
         console.error('✗ API connectivity check failed:', error);
-        console.error('Error details:', error.result ? error.result.error : error);
         isApiOnline = false;
         updateConnectionStatus(false);
         return false;
@@ -461,9 +721,9 @@ function startConnectivityMonitoring() {
         if (sheetsAPI.isSignedIn) {
             await checkApiConnectivity();
         }
-    }, 30000); // 30 seconds
+    }, 30000);
     
-    // Also check when browser thinks we're back online
+    // Check when browser thinks we're back online
     window.addEventListener('online', async () => {
         console.log('Browser detected online, checking API...');
         setTimeout(async () => {
@@ -481,24 +741,22 @@ function startConnectivityMonitoring() {
     });
 }
 
-// ═══════════════════════════════════════════════════════════
-// UI HELPERS
-// ═══════════════════════════════════════════════════════════
-
 function updateConnectionStatus(isOnline) {
-    const statusBadge = document.getElementById('connectionStatus');
+    const statusIndicator = document.getElementById('connectionStatus');
     const statusText = document.getElementById('statusText');
     
     if (isOnline) {
-        statusBadge.classList.remove('offline');
-        statusBadge.classList.add('online');
+        statusIndicator.classList.add('online');
         statusText.textContent = 'Online';
     } else {
-        statusBadge.classList.remove('online');
-        statusBadge.classList.add('offline');
+        statusIndicator.classList.remove('online');
         statusText.textContent = 'Offline';
     }
 }
+
+// ═══════════════════════════════════════════════════════════
+// UI FEEDBACK
+// ═══════════════════════════════════════════════════════════
 
 function showLoading(message = 'Loading...') {
     document.getElementById('loadingText').textContent = message;
@@ -509,10 +767,10 @@ function hideLoading() {
     document.getElementById('loadingOverlay').style.display = 'none';
 }
 
-function showError(message) {
-    alert('❌ ' + message);
+function showSuccess(message) {
+    alert('✓ ' + message);
 }
 
-function showSuccess(message) {
-    alert('✅ ' + message);
+function showError(message) {
+    alert('✗ ' + message);
 }
