@@ -1,0 +1,15 @@
+# Icons - add your own later
+icon-192.png
+icon-512.png
+
+# Environment
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
