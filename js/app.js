@@ -7,6 +7,7 @@ let currentParticipant = null;
 let venue = '';
 let desk = '';
 let staffName = '';
+let isApiOnline = false; // Cache API connectivity status
 
 // ═══════════════════════════════════════════════════════════
 // INITIALIZATION
@@ -291,10 +292,9 @@ async function assignBib() {
     try {
         showLoading('Assigning bib...');
         
-        // Check actual API connectivity
-        const isOnline = await checkApiConnectivity();
-        
-        if (!isOnline) {
+        // Use cached connectivity status (checked every 30s in background)
+        // Don't make an extra API call here - it's slow!
+        if (!isApiOnline || !sheetsAPI.isSignedIn) {
             // Add to offline queue
             await addToOfflineQueue({
                 srNo: currentParticipant.srNo,
@@ -306,12 +306,13 @@ async function assignBib() {
             });
             
             hideLoading();
-            showSuccess('API unreachable. Added to offline queue. Will sync when connection restored.');
+            showSuccess('API currently unavailable. Added to offline queue. Will sync when connection restored.');
             clearAssignment();
             return;
         }
         
-        // Assign online
+        // Try to assign directly to API
+        console.log('Attempting direct API assignment...');
         const result = await sheetsAPI.assignBibNumber(
             currentParticipant.srNo,
             bibNumber,
@@ -322,8 +323,11 @@ async function assignBib() {
         
         hideLoading();
         
+        console.log('Assignment result:', result);
+        
         if (!result.success) {
-            showError(result.error);
+            // Show the actual error to user
+            showError(`Assignment failed: ${result.error}\n\nPlease check:\n1. You're signed in\n2. Config has correct SHEET_ID\n3. Sheet exists and is accessible`);
             return;
         }
         
@@ -332,7 +336,8 @@ async function assignBib() {
         
     } catch (error) {
         hideLoading();
-        showError('Assignment failed: ' + error.message);
+        console.error('Assignment error:', error);
+        showError('Unexpected error: ' + error.message);
     }
 }
 
@@ -387,6 +392,7 @@ async function checkApiConnectivity() {
     try {
         if (!sheetsAPI.isSignedIn) {
             // Not signed in, assume offline for API purposes
+            isApiOnline = false;
             updateConnectionStatus(false);
             return false;
         }
@@ -398,10 +404,12 @@ async function checkApiConnectivity() {
         });
         
         // If we got here, API is reachable
+        isApiOnline = true;
         updateConnectionStatus(true);
         return true;
     } catch (error) {
         console.warn('API connectivity check failed:', error);
+        isApiOnline = false;
         updateConnectionStatus(false);
         return false;
     }
