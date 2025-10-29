@@ -101,6 +101,9 @@ function setupEventListeners() {
     
     // Sync button
     document.getElementById('syncBtn').addEventListener('click', syncOfflineQueue);
+    
+    // Clear queue button
+    document.getElementById('clearQueueBtn').addEventListener('click', clearOfflineQueue);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -230,10 +233,8 @@ function selectParticipant(rowIndex) {
         return;
     }
     
-    if (currentParticipant.bibNumber) {
-        showError('Bib already assigned: ' + currentParticipant.bibNumber);
-        return;
-    }
+    // Allow editing if bib is already assigned
+    const isEditing = currentParticipant.bibNumber ? true : false;
     
     // Check if settings are complete
     if (!venue || !desk || !staffName) {
@@ -250,17 +251,22 @@ function selectParticipant(rowIndex) {
             <div><strong>Gender:</strong> ${currentParticipant.gender}</div>
             <div><strong>Age:</strong> ${currentParticipant.age}</div>
             <div><strong>T-Shirt:</strong> ${currentParticipant.tshirtSize}</div>
+            ${isEditing ? `<div style="color: #f59e0b;"><strong>Current Bib:</strong> ${currentParticipant.bibNumber} (editing)</div>` : ''}
         </div>
     `;
     
     document.getElementById('bibHint').innerHTML = `
         Expected format: <strong>${currentParticipant.expectedBibFormat}</strong>
+        ${isEditing ? '<br><span style="color: #f59e0b;">⚠️ Editing existing bib assignment</span>' : ''}
     `;
     
     document.getElementById('resultsSection').style.display = 'none';
     document.getElementById('assignmentSection').style.display = 'block';
-    document.getElementById('bibInput').value = '';
+    
+    // Pre-fill with existing bib if editing
+    document.getElementById('bibInput').value = isEditing ? currentParticipant.bibNumber : '';
     document.getElementById('bibInput').focus();
+    document.getElementById('bibInput').select(); // Select text for easy replacement
 }
 
 function cancelAssignment() {
@@ -363,9 +369,30 @@ async function addToOfflineQueue(assignment) {
 async function syncOfflineQueue() {
     if (typeof offlineManager !== 'undefined') {
         showLoading('Syncing...');
-        await offlineManager.syncQueue();
+        const result = await offlineManager.syncQueue();
         hideLoading();
+        
+        if (result.synced > 0) {
+            showSuccess(`✓ Synced ${result.synced} assignment(s) successfully!`);
+        } else if (result.failed > 0) {
+            showError(`Failed to sync ${result.failed} item(s). Check console for errors.`);
+        } else {
+            showSuccess('All items already synced!');
+        }
+        
         updateQueueDisplay();
+    }
+}
+
+async function clearOfflineQueue() {
+    if (typeof offlineManager !== 'undefined') {
+        if (confirm('⚠️ Clear all pending assignments from queue?\n\nThis will DELETE all queued items permanently!')) {
+            showLoading('Clearing queue...');
+            await offlineManager.clearCompleted();
+            hideLoading();
+            showSuccess('✓ Queue cleared!');
+            updateQueueDisplay();
+        }
     }
 }
 

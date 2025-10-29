@@ -270,13 +270,11 @@ class SheetsAPI {
             }
 
             const row = rows[targetRowIndex - 1];
-
-            // Check if already has bib
-            if (row[CONFIG.COLUMNS.BIB_NUMBER]) {
-                return { 
-                    success: false, 
-                    error: `Bib ${row[CONFIG.COLUMNS.BIB_NUMBER]} already assigned!` 
-                };
+            
+            // Allow editing - log if we're overwriting
+            const existingBib = row[CONFIG.COLUMNS.BIB_NUMBER];
+            if (existingBib) {
+                console.log(`Editing bib assignment: ${existingBib} → ${bibNumber}`);
             }
 
             // Get category
@@ -290,7 +288,7 @@ class SheetsAPI {
                 return { success: false, error: formatValidation.error };
             }
 
-            // Check duplicates
+            // Check duplicates (exclude current row if editing)
             const duplicateCheck = await this.checkDuplicateBib(bibNumber, targetRowIndex);
             if (duplicateCheck.isDuplicate) {
                 return { 
