@@ -29,13 +29,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Override sign-in callback
         sheetsAPI.onSignInChange = handleSignInChange;
         
+        // Start connectivity monitoring
+        startConnectivityMonitoring();
+        
         // Check offline queue on load
         setTimeout(() => {
             updateQueueDisplay();
         }, 1000);
         
         hideLoading();
-        updateConnectionStatus(true);
+        
+        // Don't assume online - will be checked after sign in
+        updateConnectionStatus(false);
     } catch (error) {
         hideLoading();
         showError('Failed to initialize: ' + error.message);
@@ -95,13 +100,6 @@ function setupEventListeners() {
     
     // Sync button
     document.getElementById('syncBtn').addEventListener('click', syncOfflineQueue);
-    
-    // Online/offline detection
-    window.addEventListener('online', () => {
-        updateConnectionStatus(true);
-        syncOfflineQueue();
-    });
-    window.addEventListener('offline', () => updateConnectionStatus(false));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -132,12 +130,17 @@ function handleSignInChange(isSignedIn) {
         document.getElementById('signOutBtn').style.display = 'block';
         hideLoading();
         
-        // Check and sync offline queue after sign in
+        // Check API connectivity after sign in
         setTimeout(async () => {
+            console.log('Checking API connectivity...');
+            const isOnline = await checkApiConnectivity();
+            
+            // Check and sync offline queue
             await updateQueueDisplay();
             const count = await offlineManager.getQueueCount();
-            if (count > 0 && navigator.onLine) {
-                // Auto-sync if there are pending items and we're online
+            
+            if (count > 0 && isOnline) {
+                // Auto-sync if there are pending items and API is reachable
                 console.log(`Found ${count} pending items, auto-syncing...`);
                 await syncOfflineQueue();
             }
@@ -146,6 +149,7 @@ function handleSignInChange(isSignedIn) {
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('mainApp').style.display = 'none';
         document.getElementById('signOutBtn').style.display = 'none';
+        updateConnectionStatus(false);
     }
 }
 
@@ -287,8 +291,10 @@ async function assignBib() {
     try {
         showLoading('Assigning bib...');
         
-        // Check if online
-        if (!navigator.onLine) {
+        // Check actual API connectivity
+        const isOnline = await checkApiConnectivity();
+        
+        if (!isOnline) {
             // Add to offline queue
             await addToOfflineQueue({
                 srNo: currentParticipant.srNo,
@@ -300,7 +306,7 @@ async function assignBib() {
             });
             
             hideLoading();
-            showSuccess('Added to offline queue. Will sync when online.');
+            showSuccess('API unreachable. Added to offline queue. Will sync when connection restored.');
             clearAssignment();
             return;
         }
@@ -370,6 +376,61 @@ async function updateQueueDisplay() {
             queueDiv.style.display = 'none';
         }
     }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONNECTION CHECKING
+// ═══════════════════════════════════════════════════════════
+
+async function checkApiConnectivity() {
+    // Check actual API connectivity by making a lightweight API call
+    try {
+        if (!sheetsAPI.isSignedIn) {
+            // Not signed in, assume offline for API purposes
+            updateConnectionStatus(false);
+            return false;
+        }
+        
+        // Try to get just 1 row to test connectivity
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: CONFIG.SHEET_ID,
+            range: `${CONFIG.SHEET_NAME}!A1:A1`,
+        });
+        
+        // If we got here, API is reachable
+        updateConnectionStatus(true);
+        return true;
+    } catch (error) {
+        console.warn('API connectivity check failed:', error);
+        updateConnectionStatus(false);
+        return false;
+    }
+}
+
+function startConnectivityMonitoring() {
+    // Check API connectivity every 30 seconds
+    setInterval(async () => {
+        if (sheetsAPI.isSignedIn) {
+            await checkApiConnectivity();
+        }
+    }, 30000); // 30 seconds
+    
+    // Also check when browser thinks we're back online
+    window.addEventListener('online', async () => {
+        console.log('Browser detected online, checking API...');
+        setTimeout(async () => {
+            const isOnline = await checkApiConnectivity();
+            if (isOnline) {
+                await syncOfflineQueue();
+            }
+        }, 2000);
+    });
+    
+    // Update status when browser detects offline
+    window.addEventListener('offline', () => {
+        console.log('Browser detected offline');
+        updateConnectionStatus(false);
+    });
 }
 
 // ═══════════════════════════════════════════════════════════
