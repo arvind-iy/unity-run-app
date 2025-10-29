@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Override sign-in callback
         sheetsAPI.onSignInChange = handleSignInChange;
         
+        // Check offline queue on load
+        setTimeout(() => {
+            updateQueueDisplay();
+        }, 1000);
+        
         hideLoading();
         updateConnectionStatus(true);
     } catch (error) {
@@ -126,6 +131,17 @@ function handleSignInChange(isSignedIn) {
         document.getElementById('mainApp').style.display = 'block';
         document.getElementById('signOutBtn').style.display = 'block';
         hideLoading();
+        
+        // Check and sync offline queue after sign in
+        setTimeout(async () => {
+            await updateQueueDisplay();
+            const count = await offlineManager.getQueueCount();
+            if (count > 0 && navigator.onLine) {
+                // Auto-sync if there are pending items and we're online
+                console.log(`Found ${count} pending items, auto-syncing...`);
+                await syncOfflineQueue();
+            }
+        }, 1500);
     } else {
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('mainApp').style.display = 'none';
