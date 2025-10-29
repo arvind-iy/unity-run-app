@@ -327,7 +327,8 @@ async function assignBib() {
         
         if (!result.success) {
             // Show the actual error to user
-            showError(`Assignment failed: ${result.error}\n\nPlease check:\n1. You're signed in\n2. Config has correct SHEET_ID\n3. Sheet exists and is accessible`);
+            const errorMsg = result.error || 'Unknown error - check console for details';
+            showError(`Assignment failed: ${errorMsg}\n\nTroubleshooting:\n1. Check browser console (F12) for details\n2. Verify you're signed in\n3. Verify SHEET_ID in config.js is correct\n4. Check sheet exists and you have access`);
             return;
         }
         
@@ -390,25 +391,37 @@ async function updateQueueDisplay() {
 async function checkApiConnectivity() {
     // Check actual API connectivity by making a lightweight API call
     try {
+        // Check if gapi is even loaded
+        if (typeof gapi === 'undefined' || !gapi.client || !gapi.client.sheets) {
+            console.warn('GAPI not loaded yet');
+            isApiOnline = false;
+            updateConnectionStatus(false);
+            return false;
+        }
+        
         if (!sheetsAPI.isSignedIn) {
             // Not signed in, assume offline for API purposes
+            console.log('Not signed in, marking offline');
             isApiOnline = false;
             updateConnectionStatus(false);
             return false;
         }
         
         // Try to get just 1 row to test connectivity
+        console.log('Testing API connectivity with lightweight call...');
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: CONFIG.SHEET_ID,
             range: `${CONFIG.SHEET_NAME}!A1:A1`,
         });
         
         // If we got here, API is reachable
+        console.log('✓ API is online and working');
         isApiOnline = true;
         updateConnectionStatus(true);
         return true;
     } catch (error) {
-        console.warn('API connectivity check failed:', error);
+        console.error('✗ API connectivity check failed:', error);
+        console.error('Error details:', error.result ? error.result.error : error);
         isApiOnline = false;
         updateConnectionStatus(false);
         return false;

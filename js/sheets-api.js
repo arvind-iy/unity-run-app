@@ -353,7 +353,19 @@ class SheetsAPI {
 
         } catch (error) {
             console.error('Assign bib failed:', error);
-            return { success: false, error: error.message };
+            console.error('Error details:', error.result ? error.result.error : error);
+            
+            // Extract meaningful error message
+            let errorMessage = 'Unknown error';
+            if (error.result && error.result.error) {
+                errorMessage = error.result.error.message || error.result.error.code || 'API Error';
+            } else if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            return { success: false, error: errorMessage };
         }
     }
 
