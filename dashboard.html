@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667eea">
+    <title>Admin Dashboard - Unity Run & Ride</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>📊 Unity Run & Ride Dashboard</h1>
+                <p id="lastUpdate">Last updated: Never</p>
+            </div>
+            <div class="header-right">
+                <button id="refreshBtn" class="btn-icon" title="Refresh">🔄</button>
+                <button id="signOutBtn" class="btn-icon" title="Sign Out" style="display:none">🚪</button>
+            </div>
+        </header>
+
+        <!-- Auth Section -->
+        <div id="authSection" class="auth-section">
+            <div class="auth-card">
+                <h2>🔐 Admin Sign In Required</h2>
+                <p>Please sign in with your Google account to access the dashboard.</p>
+                <button id="signInBtn" class="btn btn-primary">
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard (hidden until signed in) -->
+        <div id="mainDashboard" style="display:none;">
+            <!-- Summary Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalRegistrants">0</div>
+                        <div class="stat-label">Total Registrants</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalAssigned">0</div>
+                        <div class="stat-label">Bibs Assigned</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalPending">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card info">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="completionRate">0%</div>
+                        <div class="stat-label">Completion Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="section-card">
+                <h2>📊 Category Breakdown</h2>
+                <div id="categoryStats" class="category-grid"></div>
+            </div>
+
+            <!-- Venue Performance -->
+            <div class="section-card">
+                <h2>📍 Venue Performance</h2>
+                <div id="venueStats" class="venue-grid"></div>
+            </div>
+
+            <!-- Desk Performance -->
+            <div class="section-card">
+                <h2>🖥️ Desk Performance</h2>
+                <div id="deskStats" class="desk-grid"></div>
+            </div>
+
+            <!-- Recent Assignments -->
+            <div class="section-card">
+                <h2>📝 Recent Assignments</h2>
+                <div id="recentAssignments" class="assignments-list"></div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+            <div class="spinner"></div>
+            <p id="loadingText">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="config.js"></script>
+    <script src="js/sheets-api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
