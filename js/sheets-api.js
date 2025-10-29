@@ -297,7 +297,8 @@ class SheetsAPI {
                 };
             }
 
-            // Prepare update data - ONLY update columns that exist!
+            // UPDATE ONLY BIB NUMBER COLUMN!
+            // Don't touch any other columns to avoid data loss
             const timestamp = new Date().toISOString();
             
             // Helper to convert column index to letter
@@ -310,19 +311,15 @@ class SheetsAPI {
                 return letter;
             };
             
-            // MINIMAL UPDATE - only write to columns that definitely exist
+            // ONLY UPDATE BIB NUMBER - nothing else!
             const updates = [
                 {
                     range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_NUMBER)}${targetRowIndex}`,
                     values: [[bibNumber]]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.STATUS)}${targetRowIndex}`,
-                    values: [['Bib Assigned']]
                 }
             ];
             
-            console.log('Updating columns:', updates.map(u => u.range).join(', '));
+            console.log('Updating ONLY bib column:', updates[0].range);
 
             // Batch update
             await gapi.client.sheets.spreadsheets.values.batchUpdate({
