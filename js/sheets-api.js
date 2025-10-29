@@ -299,7 +299,7 @@ class SheetsAPI {
                 };
             }
 
-            // Prepare update data
+            // Prepare update data - ONLY update columns that exist!
             const timestamp = new Date().toISOString();
             
             // Helper to convert column index to letter
@@ -312,40 +312,19 @@ class SheetsAPI {
                 return letter;
             };
             
+            // MINIMAL UPDATE - only write to columns that definitely exist
             const updates = [
                 {
                     range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_NUMBER)}${targetRowIndex}`,
                     values: [[bibNumber]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_TIMESTAMP)}${targetRowIndex}`,
-                    values: [[timestamp]]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_VENUE)}${targetRowIndex}`,
-                    values: [[venue]]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_DESK)}${targetRowIndex}`,
-                    values: [[deskNumber]]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_STAFF)}${targetRowIndex}`,
-                    values: [[staffName]]
-                },
-                {
                     range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.STATUS)}${targetRowIndex}`,
                     values: [['Bib Assigned']]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.DUPLICATE_ALERT)}${targetRowIndex}`,
-                    values: [['✓ OK']]
-                },
-                {
-                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.FORMAT_VALIDATION)}${targetRowIndex}`,
-                    values: [['✓ Valid']]
                 }
             ];
+            
+            console.log('Updating columns:', updates.map(u => u.range).join(', '));
 
             // Batch update
             await gapi.client.sheets.spreadsheets.values.batchUpdate({
