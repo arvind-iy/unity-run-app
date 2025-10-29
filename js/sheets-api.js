@@ -301,37 +301,48 @@ class SheetsAPI {
 
             // Prepare update data
             const timestamp = new Date().toISOString();
+            
+            // Helper to convert column index to letter
+            const getColumnLetter = (index) => {
+                let letter = '';
+                while (index >= 0) {
+                    letter = String.fromCharCode(65 + (index % 26)) + letter;
+                    index = Math.floor(index / 26) - 1;
+                }
+                return letter;
+            };
+            
             const updates = [
                 {
-                    range: `${CONFIG.SHEET_NAME}!H${targetRowIndex}`, // Bib Number
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_NUMBER)}${targetRowIndex}`,
                     values: [[bibNumber]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AA${targetRowIndex}`, // Timestamp
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_TIMESTAMP)}${targetRowIndex}`,
                     values: [[timestamp]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AB${targetRowIndex}`, // Venue
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_VENUE)}${targetRowIndex}`,
                     values: [[venue]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AC${targetRowIndex}`, // Desk
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_DESK)}${targetRowIndex}`,
                     values: [[deskNumber]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AD${targetRowIndex}`, // Staff
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_STAFF)}${targetRowIndex}`,
                     values: [[staffName]]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!K${targetRowIndex}`, // Status
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.STATUS)}${targetRowIndex}`,
                     values: [['Bib Assigned']]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AE${targetRowIndex}`, // Duplicate Alert
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.DUPLICATE_ALERT)}${targetRowIndex}`,
                     values: [['✓ OK']]
                 },
                 {
-                    range: `${CONFIG.SHEET_NAME}!AF${targetRowIndex}`, // Format Validation
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.FORMAT_VALIDATION)}${targetRowIndex}`,
                     values: [['✓ Valid']]
                 }
             ];

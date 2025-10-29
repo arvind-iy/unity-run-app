@@ -63,13 +63,13 @@ const CONFIG = {
         STATUS: 10,         // Column K
         PHONE: 11,          // Column L
         EMAIL: 12,          // Column M
-        // New columns for bib tracking
-        BIB_TIMESTAMP: 26,  // Column AA
-        BIB_VENUE: 27,      // Column AB
-        BIB_DESK: 28,       // Column AC
-        BIB_STAFF: 29,      // Column AD
-        DUPLICATE_ALERT: 30,// Column AE
-        FORMAT_VALIDATION: 31 // Column AF
+        // Bib tracking columns - using existing columns for now
+        BIB_TIMESTAMP: 13,  // Column N (or add new columns to your sheet)
+        BIB_VENUE: 14,      // Column O
+        BIB_DESK: 15,       // Column P
+        BIB_STAFF: 16,      // Column Q
+        DUPLICATE_ALERT: 17,// Column R
+        FORMAT_VALIDATION: 18 // Column S
     },
     
     // ═══════════════════════════════════════════════════════════
