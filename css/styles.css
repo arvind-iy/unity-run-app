@@ -11,6 +11,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    /* Better touch performance */
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -19,6 +21,12 @@ body {
     min-height: 100vh;
     color: #1e293b;
     line-height: 1.5;
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1220,30 +1228,488 @@ kbd {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE - DESKTOP FIRST (Mobile as backup)
    ═══════════════════════════════════════════════════════════ */
 
-@media (max-width: 1024px) {
-    body {
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px;
+/* Tablet & Below (768px - 1023px) */
+@media (max-width: 1023px) {
+    /* Header adjustments */
+    .header {
+        padding: 12px 15px;
+        flex-wrap: wrap;
+        gap: 10px;
     }
     
-    body::before {
-        content: "⚠️ Please use a desktop or laptop (1024px+ screen width) for the best experience.";
-        text-align: center;
+    .header-left-info {
+        flex: 1 1 100%;
+        margin-bottom: 8px;
+    }
+    
+    .header-title {
         font-size: 18px;
-        color: #64748b;
     }
     
-    .header, .main-container, .auth-container, .dashboard-container {
-        display: none;
+    .session-info {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .session-item {
+        font-size: 12px;
+    }
+    
+    .header-actions {
+        gap: 8px;
+    }
+    
+    .btn-header {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    /* Main container */
+    .main-container {
+        max-width: 100%;
+        padding: 15px;
+    }
+    
+    /* Search */
+    .search-container {
+        padding: 0;
+    }
+    
+    .search-input {
+        font-size: 15px;
+        padding: 12px 45px 12px 45px;
+    }
+    
+    /* Cards */
+    .participant-card {
+        padding: 15px;
+    }
+    
+    .card-header h3 {
+        font-size: 17px;
+    }
+    
+    .card-actions {
+        gap: 8px;
+    }
+    
+    .btn-card {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+    
+    /* Settings Panel - Overlay on smaller screens */
+    .settings-panel.active .settings-content {
+        width: 90%;
+        max-width: 400px;
+    }
+    
+    .settings-body {
+        padding: 20px 15px;
+    }
+    
+    /* Dashboard */
+    .dashboard-container {
+        padding: 15px;
     }
     
     .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .category-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .venue-grid,
+    .desk-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+
+/* Mobile Large (480px - 767px) */
+@media (max-width: 767px) {
+    /* Header - More compact */
+    .header {
+        padding: 10px;
+    }
+    
+    .header-title {
+        font-size: 16px;
+    }
+    
+    .session-info {
+        font-size: 11px;
+    }
+    
+    .status-indicator {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+    
+    .btn-header {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    
+    /* Main container */
+    .main-container {
+        padding: 12px;
+    }
+    
+    /* Search */
+    .search-wrapper {
+        padding: 0;
+    }
+    
+    .search-input {
+        height: 48px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px 50px 12px 45px;
+    }
+    
+    .search-hint {
+        font-size: 12px;
+        padding: 8px 0;
+    }
+    
+    /* Cards - Full width, larger touch targets */
+    .participant-card {
+        padding: 14px;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .card-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+    
+    .btn-card {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 14px;
+        min-height: 44px; /* Touch-friendly */
+    }
+    
+    /* Expanded card form */
+    .card-expanded {
+        padding: 15px;
+    }
+    
+    .bib-input-group input {
+        height: 48px;
+        font-size: 16px;
+    }
+    
+    .btn-assign,
+    .btn-cancel {
+        padding: 12px 20px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    /* Settings Panel - Full screen on mobile */
+    .settings-panel.active .settings-content {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        border-radius: 0;
+    }
+    
+    .settings-header {
+        padding: 15px;
+    }
+    
+    .settings-body {
+        padding: 15px;
+    }
+    
+    .desk-btn {
+        min-width: 50px;
+        height: 50px;
+        font-size: 18px;
+    }
+    
+    .setting-input {
+        height: 48px;
+        font-size: 16px;
+    }
+    
+    .btn-primary {
+        height: 50px;
+        font-size: 16px;
+    }
+    
+    /* Dashboard - Single column */
+    .stats-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 18px;
+    }
+    
+    .category-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .venue-grid,
+    .desk-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-card {
+        padding: 20px 15px;
+    }
+    
+    .assignment-item {
+        padding: 12px;
+    }
+}
+
+/* Mobile Small (< 480px) */
+@media (max-width: 479px) {
+    /* Header - Stack everything */
+    .header {
+        padding: 8px;
+    }
+    
+    .header-left-info {
+        margin-bottom: 6px;
+    }
+    
+    .header-title {
+        font-size: 14px;
+    }
+    
+    .session-info {
+        font-size: 10px;
+        gap: 6px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .btn-header {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    /* Auth container */
+    .auth-box,
+    .auth-card {
+        padding: 25px 20px;
+        max-width: 100%;
+    }
+    
+    /* Main container */
+    .main-container {
+        padding: 10px;
+    }
+    
+    /* Search */
+    .search-input {
+        height: 46px;
+        font-size: 16px;
+        padding: 10px 45px 10px 40px;
+    }
+    
+    .search-icon {
+        left: 12px;
+        font-size: 18px;
+    }
+    
+    .btn-clear {
+        right: 12px;
+        font-size: 20px;
+    }
+    
+    .search-hint {
+        font-size: 11px;
+    }
+    
+    /* Cards */
+    .participant-card {
+        padding: 12px;
+    }
+    
+    .card-header h3 {
+        font-size: 15px;
+    }
+    
+    .card-bib-badge {
+        padding: 5px 12px;
+        font-size: 13px;
+    }
+    
+    .card-demographics,
+    .card-contact {
+        font-size: 12px;
+    }
+    
+    .tshirt-badge {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+    
+    .btn-card {
+        padding: 8px 10px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+    
+    /* Expanded form */
+    .card-info {
+        font-size: 13px;
+        padding: 12px;
+    }
+    
+    /* Empty state */
+    .empty-state h3 {
+        font-size: 18px;
+    }
+    
+    .empty-state p {
+        font-size: 13px;
+    }
+    
+    /* Stats bar */
+    .stats-bar {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    /* Queue banner */
+    .queue-banner {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 10px;
+    }
+    
+    .queue-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+    
+    .btn-small {
+        flex: 1;
+        min-height: 40px;
+    }
+    
+    /* Dashboard */
+    .dashboard-header {
+        padding: 15px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 20px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+        gap: 12px;
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 32px;
+    }
+    
+    .stat-value {
+        font-size: 28px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+    }
+    
+    .section-card {
+        padding: 15px 12px;
+    }
+    
+    .section-card h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .category-header h3 {
+        font-size: 15px;
+    }
+    
+    .category-count {
+        font-size: 13px;
+        padding: 3px 8px;
+    }
+    
+    .stat-item {
+        padding: 15px;
+    }
+    
+    .stat-item-label {
+        font-size: 13px;
+    }
+    
+    .stat-item-value {
+        font-size: 20px;
+    }
+    
+    .assignment-item {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .assignment-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+    
+    .assignment-name {
+        font-size: 14px;
+    }
+    
+    .assignment-meta {
+        font-size: 12px;
+    }
+}
+
+/* Landscape phones */
+@media (max-height: 500px) and (orientation: landscape) {
+    .settings-panel.active .settings-content {
+        height: 100vh;
+        overflow-y: auto;
+    }
+    
+    .settings-body {
+        padding-bottom: 80px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .header,
+    .settings-panel,
+    .loading-overlay,
+    .queue-banner,
+    .btn-card,
+    .search-container {
+        display: none !important;
+    }
+    
+    .participant-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
     }
 }
