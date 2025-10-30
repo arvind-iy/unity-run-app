@@ -3,16 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#667eea">
-    <title>Unity Run & Ride - Bib Assignment</title>
+    <meta name="theme-color" content="#f59e0b">
+    <title>T-Shirt Replacement - Unity Run & Ride</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
+    <style>
+        /* T-Shirt specific overrides */
+        body {
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+            color: white;
+        }
+        .header-title {
+            color: white;
+        }
+        .session-info {
+            color: rgba(255,255,255,0.9);
+        }
+        .session-item strong {
+            color: white;
+        }
+        .participant-card {
+            border-left-color: #f59e0b !important;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+        }
+        .tshirt-change-badge {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-    <!-- Compact Header -->
+    <!-- Header -->
     <header class="header">
         <div class="header-left-info">
-            <div class="header-title">🏃 Unity Run & Ride</div>
+            <div class="header-title">👕 T-Shirt Replacement Desk</div>
             <div id="sessionInfo" class="session-info" style="display:none;">
                 <span class="session-item">📍 <strong id="sessionVenue">-</strong></span>
                 <span class="session-item">🖥️ Desk <strong id="sessionDesk">-</strong></span>
@@ -24,7 +57,6 @@
                 <span class="status-dot"></span>
                 <span id="statusText">Offline</span>
             </div>
-            <button id="dashboardBtn" class="btn-header" style="display:none">📊 Dashboard</button>
             <button id="settingsBtn" class="btn-header" style="display:none">⚙️</button>
             <button id="signOutBtn" class="btn-header" style="display:none">🚪</button>
         </div>
@@ -33,9 +65,9 @@
     <!-- Auth Section -->
     <div id="authSection" class="auth-container">
         <div class="auth-box">
-            <div class="auth-icon">🔐</div>
-            <h2>Sign In Required</h2>
-            <p>Please sign in with your Google account to access the bib assignment system.</p>
+            <div class="auth-icon">👕</div>
+            <h2>T-Shirt Replacement Desk</h2>
+            <p>Sign in to access the T-shirt replacement system.</p>
             <button id="signInBtn" class="btn-primary">Sign in with Google</button>
         </div>
     </div>
@@ -50,18 +82,18 @@
                     type="text" 
                     id="searchInput" 
                     class="search-input" 
-                    placeholder="Search by Mobile, Email, or Name..."
+                    placeholder="Search by Mobile, Email, Name, or Bib Number..."
                     autocomplete="off"
                 >
                 <button id="clearSearchBtn" class="btn-clear" style="display:none;">×</button>
                 <span class="search-shortcut">/</span>
             </div>
-            <div class="search-hint">💡 Try: 9014695864, email@example.com, or "Rajesh"</div>
+            <div class="search-hint">💡 Search by phone, email, name, or existing bib number</div>
         </div>
 
         <!-- Stats Bar -->
         <div id="statsBar" class="stats-bar" style="display:none;">
-            <span>📊 Quick Stats:</span>
+            <span>👕 T-Shirt Changes:</span>
             <span id="statsText">Loading...</span>
         </div>
 
@@ -71,16 +103,16 @@
         <!-- Empty State -->
         <div id="emptyState" class="empty-state">
             <div class="empty-icon">🔍</div>
-            <h3>Start by searching for a participant</h3>
-            <p>Enter a mobile number, email, or name to get started</p>
+            <h3>Search for a participant</h3>
+            <p>Enter their mobile number, email, name, or bib number</p>
             <p class="empty-hint">Press <kbd>/</kbd> to focus search</p>
         </div>
 
-        <!-- Offline Queue Banner -->
+        <!-- Queue Banner -->
         <div id="queueBanner" class="queue-banner" style="display:none;">
             <div class="queue-info">
                 <span class="queue-icon">📦</span>
-                <span id="queueText">6 pending assignments in offline queue</span>
+                <span id="queueText">Pending changes in offline queue</span>
             </div>
             <div class="queue-actions">
                 <button id="syncBtn" class="btn-small">🔄 Sync</button>
@@ -89,12 +121,12 @@
         </div>
     </main>
 
-    <!-- Settings Panel (Slide-out) -->
+    <!-- Settings Panel -->
     <div id="settingsPanel" class="settings-panel">
         <div class="settings-overlay"></div>
         <div class="settings-content">
             <div class="settings-header">
-                <h2>⚙️ Session Settings</h2>
+                <h2>⚙️ T-Shirt Desk Settings</h2>
                 <button id="closeSettingsBtn" class="btn-close">×</button>
             </div>
             
@@ -114,12 +146,11 @@
                 </div>
 
                 <div class="setting-group">
-                    <label class="setting-label">🖥️ Desk Number</label>
+                    <label class="setting-label">👕 T-Shirt Replacement Desk</label>
                     <div class="desk-group">
                         <button class="desk-btn" data-desk="1">1</button>
                         <button class="desk-btn" data-desk="2">2</button>
                         <button class="desk-btn" data-desk="3">3</button>
-                        <button class="desk-btn" data-desk="4">4</button>
                     </div>
                 </div>
 
@@ -133,9 +164,8 @@
                 <div class="settings-divider"></div>
 
                 <div class="settings-actions">
-                    <button id="viewStatsBtn" class="btn-secondary btn-full">📊 View Statistics</button>
-                    <a href="tshirt-app.html" class="btn-secondary btn-full" style="text-align: center; display: block; text-decoration: none; margin-top: 12px;">
-                        👕 T-Shirt Replacement Desk
+                    <a href="app.html" class="btn-secondary btn-full" style="text-align: center; display: block; text-decoration: none;">
+                        🏃 Switch to Bib Assignment
                     </a>
                 </div>
             </div>
@@ -154,6 +184,6 @@
     <script src="config.js"></script>
     <script src="js/sheets-api.js"></script>
     <script src="js/offline.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/tshirt-app.js"></script>
 </body>
 </html>

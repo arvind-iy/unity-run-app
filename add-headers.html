@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Add Column Headers - Unity Run & Ride</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1e293b; margin-bottom: 10px; }
+        p { color: #64748b; margin-bottom: 30px; }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success { background: #d1fae5; color: #065f46; display: block; }
+        .error { background: #fee2e2; color: #991b1b; display: block; }
+        .info { background: #dbeafe; color: #1e40af; display: block; }
+        pre {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏷️ Add Column Headers</h1>
+        <p>This will add headers to the logging columns (AB-AQ) in your Google Sheet.</p>
+
+        <div style="margin-bottom: 20px;">
+            <strong>Headers to be added:</strong>
+            <pre>
+Column AB: Bib Initial DateTime
+Column AC: Bib Initial Venue
+Column AD: Bib Initial Desk
+Column AE: Bib Initial Volunteer
+
+Column AF: Bib Change DateTime
+Column AG: Bib Change Venue
+Column AH: Bib Change Desk
+Column AI: Bib Change Volunteer
+Column AJ: Bib Change Old Number
+Column AK: Bib Change New Number
+
+Column AL: TShirt Change DateTime
+Column AM: TShirt Change Venue
+Column AN: TShirt Change Desk
+Column AO: TShirt Change Volunteer
+Column AP: TShirt Change Old Size
+Column AQ: TShirt Change New Size
+            </pre>
+        </div>
+
+        <button id="signInBtn">1. Sign In with Google</button>
+        <button id="addHeadersBtn" disabled>2. Add Headers to Sheet</button>
+
+        <div id="status"></div>
+    </div>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="config.js"></script>
+    <script>
+        let tokenClient;
+        let accessToken;
+
+        // Initialize
+        window.onload = async () => {
+            await new Promise((resolve) => {
+                gapi.load('client', resolve);
+            });
+
+            await gapi.client.init({
+                apiKey: CONFIG.API_KEY,
+                discoveryDocs: CONFIG.DISCOVERY_DOCS,
+            });
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CONFIG.CLIENT_ID,
+                scope: CONFIG.SCOPES,
+                callback: (response) => {
+                    if (response.error) {
+                        showStatus('Sign-in failed: ' + response.error, 'error');
+                        return;
+                    }
+                    accessToken = response.access_token;
+                    gapi.client.setToken({ access_token: accessToken });
+                    showStatus('✓ Signed in successfully!', 'success');
+                    document.getElementById('addHeadersBtn').disabled = false;
+                }
+            });
+        };
+
+        document.getElementById('signInBtn').addEventListener('click', () => {
+            tokenClient.requestAccessToken();
+        });
+
+        document.getElementById('addHeadersBtn').addEventListener('click', async () => {
+            if (!accessToken) {
+                showStatus('Please sign in first', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Adding headers to sheet...', 'info');
+                document.getElementById('addHeadersBtn').disabled = true;
+
+                // Define headers
+                const headers = [
+                    'Bib Initial DateTime',
+                    'Bib Initial Venue',
+                    'Bib Initial Desk',
+                    'Bib Initial Volunteer',
+                    'Bib Change DateTime',
+                    'Bib Change Venue',
+                    'Bib Change Desk',
+                    'Bib Change Volunteer',
+                    'Bib Change Old Number',
+                    'Bib Change New Number',
+                    'TShirt Change DateTime',
+                    'TShirt Change Venue',
+                    'TShirt Change Desk',
+                    'TShirt Change Volunteer',
+                    'TShirt Change Old Size',
+                    'TShirt Change New Size'
+                ];
+
+                // Add headers to row 1, starting at column AB (27)
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: CONFIG.SHEET_ID,
+                    range: `${CONFIG.SHEET_NAME}!AB1:AQ1`,
+                    valueInputOption: 'RAW',
+                    resource: {
+                        values: [headers]
+                    }
+                });
+
+                // Format the header row (bold, centered, background color)
+                await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: CONFIG.SHEET_ID,
+                    resource: {
+                        requests: [
+                            {
+                                repeatCell: {
+                                    range: {
+                                        sheetId: 0,
+                                        startRowIndex: 0,
+                                        endRowIndex: 1,
+                                        startColumnIndex: 27, // Column AB
+                                        endColumnIndex: 43    // Column AQ
+                                    },
+                                    cell: {
+                                        userEnteredFormat: {
+                                            backgroundColor: { red: 0.4, green: 0.5, blue: 0.9 },
+                                            textFormat: {
+                                                foregroundColor: { red: 1, green: 1, blue: 1 },
+                                                bold: true
+                                            },
+                                            horizontalAlignment: 'CENTER',
+                                            verticalAlignment: 'MIDDLE'
+                                        }
+                                    },
+                                    fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+                                }
+                            },
+                            {
+                                autoResizeDimensions: {
+                                    dimensions: {
+                                        sheetId: 0,
+                                        dimension: 'COLUMNS',
+                                        startIndex: 27,
+                                        endIndex: 43
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                });
+
+                showStatus('✅ SUCCESS! Headers added and formatted in columns AB-AQ', 'success');
+                document.getElementById('addHeadersBtn').textContent = '✓ Headers Added';
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('❌ Error: ' + (error.result?.error?.message || error.message), 'error');
+                document.getElementById('addHeadersBtn').disabled = false;
+            }
+        });
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = type;
+        }
+    </script>
+</body>
+</html>

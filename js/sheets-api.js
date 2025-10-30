@@ -488,6 +488,118 @@ class SheetsAPI {
     }
 
     /**
+     * Change T-shirt size
+     */
+    async changeTShirtSize(srNo, oldSize, newSize, venue, deskNumber, staffName) {
+        try {
+            // Find participant row
+            const rows = await this.getAllRows();
+            let targetRowIndex = null;
+
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i][CONFIG.COLUMNS.SR_NO] == srNo) {
+                    targetRowIndex = i + 1; // 1-based
+                    break;
+                }
+            }
+
+            if (!targetRowIndex) {
+                return { success: false, error: 'Participant not found' };
+            }
+
+            // Prepare timestamp in IST
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            // Helper to convert column index to letter
+            const getColumnLetter = (index) => {
+                let letter = '';
+                while (index >= 0) {
+                    letter = String.fromCharCode(65 + (index % 26)) + letter;
+                    index = Math.floor(index / 26) - 1;
+                }
+                return letter;
+            };
+            
+            // Prepare updates
+            const updates = [
+                // Update main T-shirt size field
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_SIZE)}${targetRowIndex}`,
+                    values: [[newSize]]
+                },
+                // Log T-shirt change (columns AL-AQ)
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_DATETIME)}${targetRowIndex}`,
+                    values: [[timestamp]]
+                },
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_VENUE)}${targetRowIndex}`,
+                    values: [[venue]]
+                },
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_DESK)}${targetRowIndex}`,
+                    values: [[deskNumber]]
+                },
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_VOLUNTEER)}${targetRowIndex}`,
+                    values: [[staffName]]
+                },
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_OLD)}${targetRowIndex}`,
+                    values: [[oldSize]]
+                },
+                {
+                    range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.TSHIRT_CHANGE_NEW)}${targetRowIndex}`,
+                    values: [[newSize]]
+                }
+            ];
+            
+            console.log(`T-shirt changed: ${oldSize} → ${newSize} at ${venue} Desk ${deskNumber} by ${staffName}`);
+            console.log(`Updating ${updates.length} columns with T-shirt change logging...`);
+
+            // Batch update
+            await gapi.client.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: CONFIG.SHEET_ID,
+                resource: {
+                    valueInputOption: 'RAW',
+                    data: updates
+                }
+            });
+
+            return { 
+                success: true, 
+                message: `T-shirt size changed from ${oldSize} to ${newSize}`,
+                timestamp: timestamp
+            };
+
+        } catch (error) {
+            console.error('Change T-shirt failed:', error);
+            console.error('Error details:', error.result ? error.result.error : error);
+            
+            let errorMessage = 'Unknown error';
+            if (error.result && error.result.error) {
+                errorMessage = error.result.error.message || error.result.error.code || 'API Error';
+            } else if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            return { success: false, error: errorMessage };
+        }
+    }
+
+    /**
      * Get dashboard statistics
      */
     async getDashboardStats() {
