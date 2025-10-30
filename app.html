@@ -11,7 +11,14 @@
 <body>
     <!-- Compact Header -->
     <header class="header">
-        <div class="header-title">🏃 Unity Run & Ride</div>
+        <div class="header-left-info">
+            <div class="header-title">🏃 Unity Run & Ride</div>
+            <div id="sessionInfo" class="session-info" style="display:none;">
+                <span class="session-item">📍 <strong id="sessionVenue">-</strong></span>
+                <span class="session-item">🖥️ Desk <strong id="sessionDesk">-</strong></span>
+                <span class="session-item">👤 <strong id="sessionVolunteer">-</strong></span>
+            </div>
+        </div>
         <div class="header-actions">
             <div id="connectionStatus" class="status-indicator">
                 <span class="status-dot"></span>

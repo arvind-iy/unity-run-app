@@ -50,6 +50,10 @@ const CONFIG = {
     // ═══════════════════════════════════════════════════════════
     
     COLUMNS: {
+        // ═══════════════════════════════════════════════════════════
+        // MASTER DATA COLUMNS (A-M) - DO NOT MODIFY!
+        // These contain the original registration data
+        // ═══════════════════════════════════════════════════════════
         SR_NO: 0,           // Column A (0-indexed)
         NAME: 1,            // Column B
         GENDER: 2,          // Column C
@@ -57,19 +61,42 @@ const CONFIG = {
         ACTIVITY_TYPE: 4,   // Column E (Run/Ride)
         DISTANCE: 5,        // Column F (3K/5K/10K)
         DISTANCE_RAN: 6,    // Column G
-        BIB_NUMBER: 7,      // Column H
-        TSHIRT_SIZE: 8,     // Column I
+        BIB_NUMBER: 7,      // Column H - Main bib number field (we update this)
+        TSHIRT_SIZE: 8,     // Column I - Main t-shirt size field (we update this)
         REG_DATE: 9,        // Column J
         STATUS: 10,         // Column K
         PHONE: 11,          // Column L
         EMAIL: 12,          // Column M
-        // Bib tracking columns - using existing columns for now
-        BIB_TIMESTAMP: 13,  // Column N (or add new columns to your sheet)
-        BIB_VENUE: 14,      // Column O
-        BIB_DESK: 15,       // Column P
-        BIB_STAFF: 16,      // Column Q
-        DUPLICATE_ALERT: 17,// Column R
-        FORMAT_VALIDATION: 18 // Column S
+        
+        // NOTE: Columns N-AA (13-26) contain OTHER master data - DO NOT TOUCH!
+        // Master data ends at Column AA (index 26)
+        // Logging columns start at Column AB (index 27) onwards
+        
+        // ═══════════════════════════════════════════════════════════
+        // LOGGING COLUMNS (AB onwards) - SAFE ZONE, NO MASTER DATA
+        // ═══════════════════════════════════════════════════════════
+        
+        // Initial Bib Registration Log
+        BIB_INIT_DATETIME: 27,   // Column AB (27) - Date & time of initial bib assignment
+        BIB_INIT_VENUE: 28,      // Column AC (28) - Venue where bib was first assigned
+        BIB_INIT_DESK: 29,       // Column AD (29) - Desk number for initial assignment
+        BIB_INIT_VOLUNTEER: 30,  // Column AE (30) - Volunteer who assigned initially
+        
+        // Bib Number Change Log (for edits/replacements)
+        BIB_CHANGE_DATETIME: 31, // Column AF (31) - Date & time of bib change
+        BIB_CHANGE_VENUE: 32,    // Column AG (32) - Venue where bib was changed
+        BIB_CHANGE_DESK: 33,     // Column AH (33) - Desk number for change
+        BIB_CHANGE_VOLUNTEER: 34,// Column AI (34) - Volunteer who made the change
+        BIB_CHANGE_OLD: 35,      // Column AJ (35) - Old bib number (before change)
+        BIB_CHANGE_NEW: 36,      // Column AK (36) - New bib number (after change)
+        
+        // T-Shirt Size Change Log
+        TSHIRT_CHANGE_DATETIME: 37, // Column AL (37) - Date & time of t-shirt change
+        TSHIRT_CHANGE_VENUE: 38,    // Column AM (38) - Venue where t-shirt was changed
+        TSHIRT_CHANGE_DESK: 39,     // Column AN (39) - Desk number for t-shirt change
+        TSHIRT_CHANGE_VOLUNTEER: 40,// Column AO (40) - Volunteer who changed t-shirt
+        TSHIRT_CHANGE_OLD: 41,      // Column AP (41) - Old t-shirt size
+        TSHIRT_CHANGE_NEW: 42       // Column AQ (42) - New t-shirt size
     },
     
     // ═══════════════════════════════════════════════════════════

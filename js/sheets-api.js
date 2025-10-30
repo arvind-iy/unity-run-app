@@ -365,9 +365,18 @@ class SheetsAPI {
                 };
             }
 
-            // UPDATE ONLY BIB NUMBER COLUMN!
-            // Don't touch any other columns to avoid data loss
-            const timestamp = new Date().toISOString();
+            // Prepare timestamp in readable format
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
             
             // Helper to convert column index to letter
             const getColumnLetter = (index) => {
@@ -379,15 +388,71 @@ class SheetsAPI {
                 return letter;
             };
             
-            // ONLY UPDATE BIB NUMBER - nothing else!
+            // Prepare updates array
             const updates = [
+                // Always update the main bib number field
                 {
                     range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_NUMBER)}${targetRowIndex}`,
                     values: [[bibNumber]]
                 }
             ];
             
-            console.log('Updating ONLY bib column:', updates[0].range);
+            // Determine if this is initial assignment or a change
+            const isInitialAssignment = !existingBib;
+            
+            if (isInitialAssignment) {
+                // Log initial bib registration (columns N-Q)
+                updates.push(
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_INIT_DATETIME)}${targetRowIndex}`,
+                        values: [[timestamp]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_INIT_VENUE)}${targetRowIndex}`,
+                        values: [[venue]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_INIT_DESK)}${targetRowIndex}`,
+                        values: [[deskNumber]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_INIT_VOLUNTEER)}${targetRowIndex}`,
+                        values: [[staffName]]
+                    }
+                );
+                console.log(`Initial bib assignment: ${bibNumber} at ${venue} Desk ${deskNumber} by ${staffName}`);
+            } else {
+                // Log bib number change (columns R-W)
+                updates.push(
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_DATETIME)}${targetRowIndex}`,
+                        values: [[timestamp]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_VENUE)}${targetRowIndex}`,
+                        values: [[venue]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_DESK)}${targetRowIndex}`,
+                        values: [[deskNumber]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_VOLUNTEER)}${targetRowIndex}`,
+                        values: [[staffName]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_OLD)}${targetRowIndex}`,
+                        values: [[existingBib]]
+                    },
+                    {
+                        range: `${CONFIG.SHEET_NAME}!${getColumnLetter(CONFIG.COLUMNS.BIB_CHANGE_NEW)}${targetRowIndex}`,
+                        values: [[bibNumber]]
+                    }
+                );
+                console.log(`Bib changed: ${existingBib} → ${bibNumber} at ${venue} Desk ${deskNumber} by ${staffName}`);
+            }
+            
+            console.log(`Updating ${updates.length} columns with logging...`);
 
             // Batch update
             await gapi.client.sheets.spreadsheets.values.batchUpdate({
@@ -464,8 +529,10 @@ class SheetsAPI {
                 if (bibNumber) {
                     stats.totalAssigned++;
 
-                    const venue = row[CONFIG.COLUMNS.BIB_VENUE];
-                    const desk = row[CONFIG.COLUMNS.BIB_DESK];
+                    // Use initial assignment venue/desk for stats (columns O, P)
+                    const venue = row[CONFIG.COLUMNS.BIB_INIT_VENUE];
+                    const desk = row[CONFIG.COLUMNS.BIB_INIT_DESK];
+                    const timestamp = row[CONFIG.COLUMNS.BIB_INIT_DATETIME];
 
                     // Venue stats
                     if (venue) {
@@ -485,7 +552,7 @@ class SheetsAPI {
                             bibNumber: bibNumber,
                             venue: venue,
                             desk: desk,
-                            timestamp: row[CONFIG.COLUMNS.BIB_TIMESTAMP]
+                            timestamp: timestamp
                         });
                     }
                 } else {

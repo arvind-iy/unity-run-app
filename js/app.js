@@ -72,6 +72,9 @@ function loadSettings() {
     if (staffName) {
         document.getElementById('staffNameInput').value = staffName;
     }
+    
+    // Update session info display
+    updateSessionDisplay();
 }
 
 function saveSettings() {
@@ -91,8 +94,27 @@ function saveSettings() {
     localStorage.setItem('desk', desk);
     localStorage.setItem('staffName', staffName);
     
+    // Update session info display
+    updateSessionDisplay();
+    
     console.log('Settings saved:', { venue, desk, staffName });
     return { venue, desk, staffName };
+}
+
+function updateSessionDisplay() {
+    const sessionInfo = document.getElementById('sessionInfo');
+    const sessionVenue = document.getElementById('sessionVenue');
+    const sessionDesk = document.getElementById('sessionDesk');
+    const sessionVolunteer = document.getElementById('sessionVolunteer');
+    
+    if (venue && desk && staffName) {
+        sessionVenue.textContent = venue;
+        sessionDesk.textContent = desk;
+        sessionVolunteer.textContent = staffName;
+        sessionInfo.style.display = 'flex';
+    } else {
+        sessionInfo.style.display = 'none';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
