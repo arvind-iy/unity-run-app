@@ -39,10 +39,35 @@ const CONFIG = {
     // ═══════════════════════════════════════════════════════════
     
     BIB_RANGES: {
-        '3K': { min: 30001, max: 39999, prefix: '' },
-        '5K': { min: 50001, max: 59999, prefix: '' },
-        '10K': { min: 100001, max: 199999, prefix: '' },
-        'Ride': { min: 1, max: 9999, prefix: 'C' }
+        // Run categories - simple ranges, no overlap
+        '3K': { min: 3001, max: 3999, prefix: '' },
+        '5K': { min: 5001, max: 6999, prefix: '' },
+        '10K': { min: 10001, max: 11500, prefix: '' },
+        
+        // Ride categories - distance-specific with overlap management
+        // Physical bibs C401-C550 have "3-5K" graphic (shared stack)
+        // Physical bibs C001-C500 have "10K" graphic (separate stack)
+        'Ride-3K': { 
+            min: 401, 
+            max: 550, 
+            prefix: 'C',
+            sharedWith: ['Ride-5K'],  // Shares physical bibs with 5K
+            physicalStack: '3K-5K stack (C401-C550 with "3-5K" graphic)'
+        },
+        'Ride-5K': { 
+            min: 401, 
+            max: 550, 
+            prefix: 'C',
+            sharedWith: ['Ride-3K'],  // Shares physical bibs with 3K
+            physicalStack: '3K-5K stack (C401-C550 with "3-5K" graphic)'
+        },
+        'Ride-10K': { 
+            min: 1, 
+            max: 500, 
+            prefix: 'C',
+            sharedWith: [],  // Independent stack
+            physicalStack: '10K stack (C001-C500 with "10K" graphic)'
+        }
     },
     
     // ═══════════════════════════════════════════════════════════

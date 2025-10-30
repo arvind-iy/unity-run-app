@@ -423,7 +423,7 @@ function createExpansionForm(p, isEditing) {
             <br>
             ${isEditing ? `Current Bib: <strong>${p.bibNumber}</strong>` : ''}
             <br>
-            Activity: <strong>${p.activityType}</strong> • Distance: <strong>${p.distance}</strong>
+            Activity: <strong>${p.activityType}</strong> • Distance: <strong>${p.distance}</strong> • Category: <strong>${p.category}</strong>
             <br>
             Expected Bib Range: <strong>${p.expectedBibFormat}</strong>
         </div>

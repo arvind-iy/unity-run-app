@@ -208,7 +208,8 @@ class SheetsAPI {
                     
                     const activityType = row[CONFIG.COLUMNS.ACTIVITY_TYPE] || '';
                     const distance = row[CONFIG.COLUMNS.DISTANCE] || '';
-                    const category = activityType === 'Ride' ? 'Ride' : distance;
+                    // Map to distance-specific categories for Ride
+                    const category = activityType === 'Ride' ? `Ride-${distance}` : distance;
 
                     results.push({
                         rowIndex: i + 1, // 1-based for Google Sheets
@@ -244,7 +245,12 @@ class SheetsAPI {
         if (!range) return 'Unknown';
         
         if (range.prefix) {
-            return `${range.prefix}${String(range.min).padStart(3, '0')}-${range.prefix}${range.max}`;
+            const formattedRange = `${range.prefix}${String(range.min).padStart(3, '0')}-${range.prefix}${range.max}`;
+            // Add physical stack info for Ride categories
+            if (range.physicalStack) {
+                return `${formattedRange} (${range.physicalStack})`;
+            }
+            return formattedRange;
         }
         return `${range.min}-${range.max}`;
     }
@@ -258,40 +264,68 @@ class SheetsAPI {
         
         if (!range) return { valid: false, error: `Unknown category: ${category}` };
         
-        if (category === 'Ride') {
+        // Handle Ride categories (Ride-3K, Ride-5K, Ride-10K)
+        if (category.startsWith('Ride-')) {
             if (!bibStr.startsWith('C')) {
-                return { valid: false, error: `Ride bibs must start with 'C' (e.g., C001)\nExpected: C001-C9999` };
+                return { 
+                    valid: false, 
+                    error: `${category} bibs must start with 'C' (e.g., C001)\nExpected: ${this.getExpectedBibFormat(category)}` 
+                };
             }
             const numPart = bibStr.substring(1);
             if (!/^\d+$/.test(numPart)) {
-                return { valid: false, error: `Invalid format. Ride bibs: C001-C9999` };
+                return { 
+                    valid: false, 
+                    error: `Invalid format. Expected: ${this.getExpectedBibFormat(category)}` 
+                };
             }
             const bibNum = parseInt(numPart);
             if (bibNum < range.min || bibNum > range.max) {
-                return { valid: false, error: `Ride bib out of range.\nExpected: C001-C9999` };
+                return { 
+                    valid: false, 
+                    error: `Bib ${bibNumber} out of range for ${category}.\nExpected: ${this.getExpectedBibFormat(category)}` 
+                };
             }
             return { valid: true };
         }
         
+        // Handle Run categories (3K, 5K, 10K)
         if (!/^\d+$/.test(bibStr)) {
-            return { valid: false, error: `${category} bibs must be numeric.\nExpected: ${range.min}-${range.max}` };
+            return { 
+                valid: false, 
+                error: `${category} bibs must be numeric.\nExpected: ${range.min}-${range.max}` 
+            };
         }
         
         const bibNum = parseInt(bibStr);
         if (bibNum < range.min || bibNum > range.max) {
-            return { valid: false, error: `Bib ${bibNumber} doesn't match ${category}.\nExpected: ${range.min}-${range.max}` };
+            return { 
+                valid: false, 
+                error: `Bib ${bibNumber} doesn't match ${category}.\nExpected: ${range.min}-${range.max}` 
+            };
         }
         
         return { valid: true };
     }
 
     /**
-     * Check for duplicate bib
+     * Check for duplicate bib with category-aware logic
+     * Handles shared physical bib stacks (Ride 3K/5K share C401-C550)
      */
-    async checkDuplicateBib(bibNumber, excludeRowIndex = null) {
+    async checkDuplicateBib(bibNumber, category, excludeRowIndex = null) {
         try {
             const rows = await this.getAllRows();
             const bibStr = String(bibNumber).trim().toUpperCase();
+
+            // Determine which categories share physical bibs with current category
+            let categoriesToCheck = [category];
+            
+            // Ride 3K and 5K share the same physical bibs (C401-C550)
+            if (category === 'Ride-3K' || category === 'Ride-5K') {
+                categoriesToCheck = ['Ride-3K', 'Ride-5K'];
+            }
+            // Ride 10K has its own stack (C001-C500), no sharing with 3K/5K
+            // Run categories (3K, 5K, 10K) are independent, no sharing
 
             for (let i = 1; i < rows.length; i++) {
                 const rowIndex = i + 1;
@@ -299,13 +333,37 @@ class SheetsAPI {
 
                 const existingBib = String(rows[i][CONFIG.COLUMNS.BIB_NUMBER] || '').trim().toUpperCase();
                 
-                if (existingBib === bibStr) {
+                // Different bib number, no conflict
+                if (existingBib !== bibStr) continue;
+
+                // Same bib number found, check if it conflicts with our category
+                const existingActivityType = rows[i][CONFIG.COLUMNS.ACTIVITY_TYPE] || '';
+                const existingDistance = rows[i][CONFIG.COLUMNS.DISTANCE] || '';
+                const existingCategory = existingActivityType === 'Ride' 
+                    ? `Ride-${existingDistance}` 
+                    : existingDistance;
+
+                // Check if existing category conflicts with current category
+                if (categoriesToCheck.includes(existingCategory)) {
+                    // Build helpful error message
+                    let errorDetail = `Bib ${bibNumber} already assigned to ${rows[i][CONFIG.COLUMNS.NAME]} for ${existingCategory}`;
+                    
+                    // Add explanation for shared stack
+                    if (category !== existingCategory && (category === 'Ride-3K' || category === 'Ride-5K')) {
+                        errorDetail += `\n\n⚠️ Physical Bib Conflict:\nRide 3K and 5K share the same physical bibs (C401-C550).\nThis bib was already given out from the shared stack.`;
+                    }
+                    
+                    const venue = rows[i][CONFIG.COLUMNS.BIB_INIT_VENUE] || 'Unknown';
+                    const desk = rows[i][CONFIG.COLUMNS.BIB_INIT_DESK] || 'Unknown';
+                    
                     return {
                         isDuplicate: true,
                         row: rowIndex,
                         name: rows[i][CONFIG.COLUMNS.NAME],
-                        venue: rows[i][CONFIG.COLUMNS.BIB_VENUE] || 'Unknown',
-                        desk: rows[i][CONFIG.COLUMNS.BIB_DESK] || 'Unknown'
+                        category: existingCategory,
+                        venue: venue,
+                        desk: desk,
+                        errorDetail: errorDetail
                     };
                 }
             }
@@ -345,10 +403,10 @@ class SheetsAPI {
                 console.log(`Editing bib assignment: ${existingBib} → ${bibNumber}`);
             }
 
-            // Get category
+            // Get category (distance-specific for Ride)
             const activityType = row[CONFIG.COLUMNS.ACTIVITY_TYPE];
             const distance = row[CONFIG.COLUMNS.DISTANCE];
-            const category = activityType === 'Ride' ? 'Ride' : distance;
+            const category = activityType === 'Ride' ? `Ride-${distance}` : distance;
 
             // Validate format
             const formatValidation = this.validateBibFormat(bibNumber, category);
@@ -356,12 +414,12 @@ class SheetsAPI {
                 return { success: false, error: formatValidation.error };
             }
 
-            // Check duplicates (exclude current row if editing)
-            const duplicateCheck = await this.checkDuplicateBib(bibNumber, targetRowIndex);
+            // Check duplicates with category-aware logic (exclude current row if editing)
+            const duplicateCheck = await this.checkDuplicateBib(bibNumber, category, targetRowIndex);
             if (duplicateCheck.isDuplicate) {
                 return { 
                     success: false, 
-                    error: `Bib ${bibNumber} already assigned to ${duplicateCheck.name} (Row ${duplicateCheck.row})`
+                    error: duplicateCheck.errorDetail || `Bib ${bibNumber} already assigned to ${duplicateCheck.name} (Row ${duplicateCheck.row})`
                 };
             }
 
@@ -616,7 +674,9 @@ class SheetsAPI {
                     '3K': { total: 0, assigned: 0 },
                     '5K': { total: 0, assigned: 0 },
                     '10K': { total: 0, assigned: 0 },
-                    'Ride': { total: 0, assigned: 0 }
+                    'Ride-3K': { total: 0, assigned: 0 },
+                    'Ride-5K': { total: 0, assigned: 0 },
+                    'Ride-10K': { total: 0, assigned: 0 }
                 },
                 recentAssignments: []
             };
@@ -627,7 +687,7 @@ class SheetsAPI {
                 const bibNumber = row[CONFIG.COLUMNS.BIB_NUMBER];
                 const activityType = row[CONFIG.COLUMNS.ACTIVITY_TYPE];
                 const distance = row[CONFIG.COLUMNS.DISTANCE];
-                const category = activityType === 'Ride' ? 'Ride' : distance;
+                const category = activityType === 'Ride' ? `Ride-${distance}` : distance;
 
                 // Count by category
                 if (stats.categoryStats[category]) {
